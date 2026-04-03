@@ -2,6 +2,8 @@
 
 > *An RFC 2324-compliant HTCPCP server that will earnestly refuse to make you coffee.*
 
+![Depresso-Tron Logo](assets/img/cover-image.png)
+
 **April Fools Challenge entry** · [#418challenge](https://dev.to/t/418challenge) · [#devchallenge](https://dev.to/t/devchallenge)
 
 **Live demo:** [coffee.smartservices.tech](https://coffee.smartservices.tech)
