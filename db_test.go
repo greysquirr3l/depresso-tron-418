@@ -24,11 +24,8 @@ func freshDB(t *testing.T) {
 			brew_started     INTEGER  NOT NULL DEFAULT 0,
 			rejection_count  INTEGER  NOT NULL DEFAULT 0,
 			when_window_at   DATETIME,
-			pow_challenge    TEXT     NOT NULL DEFAULT ''
-		);
-		CREATE TABLE IF NOT EXISTS settings (
-			key   TEXT PRIMARY KEY,
-			value TEXT NOT NULL DEFAULT ''
+			pow_challenge    TEXT     NOT NULL DEFAULT '',
+			gemini_key       TEXT     NOT NULL DEFAULT ''
 		);
 	`)
 	if err != nil {
@@ -178,38 +175,24 @@ func TestManagerOverride(t *testing.T) {
 	}
 }
 
-func TestGetSetSetting(t *testing.T) {
+func TestSetSessionGeminiKey(t *testing.T) {
 	freshDB(t)
+	s, _ := createSession(context.Background())
 
-	// Getting a non-existent key returns an error.
-	_, err := getSetting(context.Background(), "missing_key")
-	if err == nil {
-		t.Error("getSetting for missing key should return error")
+	if err := setSessionGeminiKey(context.Background(), s.ID, "test-api-key"); err != nil {
+		t.Fatalf("setSessionGeminiKey: %v", err)
+	}
+	got, _ := getSession(context.Background(), s.ID)
+	if got.GeminiKey != "test-api-key" {
+		t.Errorf("GeminiKey = %q, want %q", got.GeminiKey, "test-api-key")
 	}
 
-	if err := setSetting(context.Background(), "gemini_api_key", "test-key-value"); err != nil {
-		t.Fatalf("setSetting: %v", err)
+	// Overwrite with a new key.
+	if err := setSessionGeminiKey(context.Background(), s.ID, "updated-key"); err != nil {
+		t.Fatalf("setSessionGeminiKey update: %v", err)
 	}
-	v, err := getSetting(context.Background(), "gemini_api_key")
-	if err != nil {
-		t.Fatalf("getSetting after set: %v", err)
-	}
-	if v != "test-key-value" {
-		t.Errorf("getSetting = %q, want %q", v, "test-key-value")
-	}
-}
-
-func TestSetSettingUpsert(t *testing.T) {
-	freshDB(t)
-
-	_ = setSetting(context.Background(), "key", "first")
-	_ = setSetting(context.Background(), "key", "second")
-
-	v, err := getSetting(context.Background(), "key")
-	if err != nil {
-		t.Fatalf("getSetting: %v", err)
-	}
-	if v != "second" {
-		t.Errorf("upsert: want %q, got %q", "second", v)
+	got, _ = getSession(context.Background(), s.ID)
+	if got.GeminiKey != "updated-key" {
+		t.Errorf("GeminiKey after update = %q, want %q", got.GeminiKey, "updated-key")
 	}
 }

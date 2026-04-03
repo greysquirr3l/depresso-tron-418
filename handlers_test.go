@@ -41,11 +41,8 @@ func TestMain(m *testing.M) {
 			brew_started     INTEGER  NOT NULL DEFAULT 0,
 			rejection_count  INTEGER  NOT NULL DEFAULT 0,
 			when_window_at   DATETIME,
-			pow_challenge    TEXT     NOT NULL DEFAULT ''
-		);
-		CREATE TABLE IF NOT EXISTS settings (
-			key   TEXT PRIMARY KEY,
-			value TEXT NOT NULL DEFAULT ''
+			pow_challenge    TEXT     NOT NULL DEFAULT '',
+			gemini_key       TEXT     NOT NULL DEFAULT ''
 		);
 	`); err != nil {
 		panic("TestMain: schema: " + err.Error())
@@ -78,11 +75,16 @@ func TestHandleTeapotState_ReturnsHTMLWithMood(t *testing.T) {
 }
 
 func TestHandleGeminiStatus_OnlineWhenKeySet(t *testing.T) {
-	oldKey := geminiKey
-	geminiKey = "fake-key-for-test"
-	defer func() { geminiKey = oldKey }()
+	s, err := createSession(context.Background())
+	if err != nil {
+		t.Fatalf("createSession: %v", err)
+	}
+	if err := setSessionGeminiKey(context.Background(), s.ID, "fake-key-for-test"); err != nil {
+		t.Fatalf("setSessionGeminiKey: %v", err)
+	}
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/gemini-status", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: s.ID})
 	w := httptest.NewRecorder()
 
 	handleGeminiStatus(w, req)
@@ -94,10 +96,7 @@ func TestHandleGeminiStatus_OnlineWhenKeySet(t *testing.T) {
 }
 
 func TestHandleGeminiStatus_OfflineWhenNoKey(t *testing.T) {
-	oldKey := geminiKey
-	geminiKey = ""
-	defer func() { geminiKey = oldKey }()
-
+	// No session cookie — barista should report offline.
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/gemini-status", nil)
 	w := httptest.NewRecorder()
 

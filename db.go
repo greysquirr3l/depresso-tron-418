@@ -22,6 +22,7 @@ type Session struct {
 	RejectionCount int
 	WhenWindowAt   *time.Time
 	PowChallenge   string
+	GeminiKey      string
 }
 
 func initDB() error {
@@ -41,42 +42,22 @@ func initDB() error {
 			brew_started     INTEGER  NOT NULL DEFAULT 0,
 			rejection_count  INTEGER  NOT NULL DEFAULT 0,
 			when_window_at   DATETIME,
-			pow_challenge    TEXT     NOT NULL DEFAULT ''
-		);
-
-		CREATE TABLE IF NOT EXISTS settings (
-			key   TEXT PRIMARY KEY,
-			value TEXT NOT NULL DEFAULT ''
+			pow_challenge    TEXT     NOT NULL DEFAULT '',
+			gemini_key       TEXT     NOT NULL DEFAULT ''
 		);
 	`)
 	if err != nil {
 		return fmt.Errorf("init schema: %w", err)
 	}
+	// Idempotent migration for databases created before the gemini_key column
+	// was added. SQLite returns an error on duplicate columns; we intentionally
+	// ignore it.
+	_, _ = db.ExecContext(context.Background(), `ALTER TABLE sessions ADD COLUMN gemini_key TEXT NOT NULL DEFAULT ''`)
 	return nil
 }
 
-// getSetting returns a persistent server config value.
-func getSetting(ctx context.Context, key string) (string, error) {
-	var value string
-	err := database.QueryRowContext(ctx, `SELECT value FROM settings WHERE key = ?`, key).Scan(&value)
-	if err != nil {
-		return "", fmt.Errorf("get setting %q: %w", key, err)
-	}
-	return value, nil
-}
-
-// setSetting upserts a persistent server config value.
-func setSetting(ctx context.Context, key, value string) error {
-	_, err := database.ExecContext(ctx,
-		`INSERT INTO settings (key, value) VALUES (?, ?)
-		 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-		key, value,
-	)
-	if err != nil {
-		return fmt.Errorf("set setting %q: %w", key, err)
-	}
-	return nil
-}
+// getSetting and setSetting removed — Gemini API keys are per-session.
+// See setSessionGeminiKey / Session.GeminiKey.
 
 func closeDB() {
 	if database != nil {
@@ -107,7 +88,7 @@ func createSession(ctx context.Context) (*Session, error) {
 func getSession(ctx context.Context, id string) (*Session, error) {
 	row := database.QueryRowContext(ctx, `
 		SELECT id, created_at, permit_approved, beans_approved,
-		       pow_solved, brew_started, rejection_count, when_window_at, pow_challenge
+		       pow_solved, brew_started, rejection_count, when_window_at, pow_challenge, gemini_key
 		FROM sessions WHERE id = ?`, id)
 
 	s := &Session{}
@@ -118,7 +99,7 @@ func getSession(ctx context.Context, id string) (*Session, error) {
 		&s.ID, &s.CreatedAt,
 		&permitApproved, &beansApproved,
 		&powSolved, &brewStarted,
-		&s.RejectionCount, &whenWindowAt, &s.PowChallenge,
+		&s.RejectionCount, &whenWindowAt, &s.PowChallenge, &s.GeminiKey,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("scan session: %w", err)
@@ -204,6 +185,15 @@ func setWhenWindow(ctx context.Context, id string, t time.Time) error {
 	)
 	if err != nil {
 		return fmt.Errorf("set when window: %w", err)
+	}
+	return nil
+}
+
+// setSessionGeminiKey stores the user's personal Gemini API key against their session.
+// The key is never logged or reflected back to the client.
+func setSessionGeminiKey(ctx context.Context, id, key string) error {
+	if _, err := database.ExecContext(ctx, `UPDATE sessions SET gemini_key = ? WHERE id = ?`, key, id); err != nil {
+		return fmt.Errorf("set session gemini key: %w", err)
 	}
 	return nil
 }

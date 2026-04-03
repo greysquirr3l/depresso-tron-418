@@ -1,0 +1,26 @@
+# Git
+.git
+.gitignore
+
+# Environment — never bake secrets into the image
+.env
+.env.*
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Pre-built archives
+*.tar.gz
+
+# macOS
+.DS_Store
+
+# Build output (binary rebuilt inside Docker)
+depresso-tron-418
+
+# Dev/test artifacts
+details.txt
+Rando-Sans.zip
+rando-sans-licence.pdf

@@ -82,7 +82,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	mood := serverState.GetMood()
 	data := IndexData{
 		SessionID:        s.ID,
-		GeminiConfigured: geminiKey != "",
+		GeminiConfigured: s.GeminiKey != "",
 		PermitApproved:   s.PermitApproved,
 		BeansApproved:    s.BeansApproved,
 		PowSolved:        s.PowSolved,
@@ -98,9 +98,9 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 
 // ── Gemini Key Setup ──────────────────────────────────────────────────────────
 
-// handleSetGeminiKey accepts a Gemini API key from the UI, stores it in memory
-// and SQLite. The key is never reflected back to the client in any response body
-// or header — only a confirmation is returned.
+// handleSetGeminiKey accepts a Gemini API key from the UI and stores it
+// against the caller's session. The key is per-user — each visitor supplies
+// their own. It is never reflected back to the client in any response.
 func handleSetGeminiKey(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	key := strings.TrimSpace(r.FormValue("gemini_key"))
@@ -117,24 +117,33 @@ func handleSetGeminiKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	geminiKey = key
-	if err := setSetting(r.Context(), "gemini_api_key", key); err != nil {
-		log.Printf("persist gemini key: %v", err)
-		// Non-fatal — key is in memory, will work until restart.
+	s, err := getOrCreateSession(w, r)
+	if err != nil {
+		http.Error(w, "session failure", http.StatusInternalServerError)
+		return
+	}
+	if err := setSessionGeminiKey(r.Context(), s.ID, key); err != nil {
+		log.Printf("persist session gemini key: %v", err)
 	}
 
-	log.Println("☕  Gemini API key updated via browser UI")
+	log.Printf("☕  Gemini API key set for session %.8s", s.ID)
 
-	// Redirect the whole page so IndexData.GeminiConfigured flips to true.
+	// Reload the page so IndexData.GeminiConfigured flips to true.
 	w.Header().Set("HX-Redirect", "/")
 	w.WriteHeader(http.StatusOK)
 }
 
-// handleGeminiStatus returns a small HTML badge indicating whether the barista
-// is online. It never exposes the key material.
-func handleGeminiStatus(w http.ResponseWriter, _ *http.Request) {
+// handleGeminiStatus returns a small HTML badge indicating whether the calling
+// session's barista is online. It never exposes the key material.
+func handleGeminiStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if geminiKey != "" {
+	var hasKey bool
+	if cookie, err := r.Cookie(sessionCookieName); err == nil && cookie.Value != "" {
+		if s, err := getSession(r.Context(), cookie.Value); err == nil {
+			hasKey = s.GeminiKey != ""
+		}
+	}
+	if hasKey {
 		fmt.Fprint(w, `<span class="badge-ok">✓ BARISTA ONLINE</span>`)
 	} else {
 		fmt.Fprint(w, `<span class="badge-pending">⚠ OFFLINE SNARK MODE</span>`)
@@ -226,7 +235,7 @@ func handleCheckBeans(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	verdict, err := evaluateBeans(r.Context(), desc, s.RejectionCount)
+	verdict, err := evaluateBeans(r.Context(), desc, s.RejectionCount, s.GeminiKey)
 	if err != nil {
 		log.Printf("gemini error: %v", err)
 		renderPartial(w, "error.html", PartialData{Message: "The barista has experienced a personal crisis and is temporarily unavailable. (This is not a reflection on your beans. Actually it might be.)"})

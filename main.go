@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"embed"
 	"html/template"
 	"io/fs"
@@ -20,7 +19,6 @@ var embedFS embed.FS
 
 var (
 	tmpl        *template.Template
-	geminiKey   string
 	serverState *AppState
 )
 
@@ -65,26 +63,10 @@ func main() {
 	// Load .env before reading env vars; shell exports always take precedence.
 	loadDotEnv(".env")
 
-	// Env var takes priority; DB-persisted key loaded after initDB().
-	if key := os.Getenv("GEMINI_API_KEY"); key != "" {
-		geminiKey = key
-	}
-
 	if err := initDB(); err != nil {
 		log.Fatalf("DB init failed: %v", err)
 	}
 	defer closeDB()
-
-	// If not set by env, try DB-persisted value.
-	if geminiKey == "" {
-		if stored, err := getSetting(context.Background(), "gemini_api_key"); err == nil && stored != "" {
-			geminiKey = stored
-			log.Println("☕  GEMINI_API_KEY loaded from DB")
-		} else {
-			log.Println("⚠  GEMINI_API_KEY not set — Barista running in offline snark mode")
-			log.Println("   Set GEMINI_API_KEY env var OR enter it in the browser at http://localhost:4180")
-		}
-	}
 
 	serverState = newAppState()
 	go serverState.runMoodCycle()

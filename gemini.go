@@ -75,7 +75,8 @@ var offlineRejections = []string{
 }
 
 // evaluateBeans calls the Gemini barista or falls back to offline snark mode.
-func evaluateBeans(ctx context.Context, description string, rejectionCount int) (*BaristaVerdict, error) {
+// key is the caller's personal Gemini API key; empty string triggers offline mode.
+func evaluateBeans(ctx context.Context, description string, rejectionCount int, key string) (*BaristaVerdict, error) {
 	if containsDecaf(description) {
 		return &BaristaVerdict{
 			IsDecaf:  true,
@@ -86,7 +87,7 @@ func evaluateBeans(ctx context.Context, description string, rejectionCount int) 
 		}, nil
 	}
 
-	if geminiKey == "" {
+	if key == "" {
 		msg := offlineRejections[rejectionCount%len(offlineRejections)]
 		return &BaristaVerdict{
 			Approved: strings.HasPrefix(msg, "APPROVED:"),
@@ -94,7 +95,7 @@ func evaluateBeans(ctx context.Context, description string, rejectionCount int) 
 		}, nil
 	}
 
-	client, err := genai.NewClient(ctx, option.WithAPIKey(geminiKey))
+	client, err := genai.NewClient(ctx, option.WithAPIKey(key))
 	if err != nil {
 		return nil, fmt.Errorf("gemini client: %w", err)
 	}

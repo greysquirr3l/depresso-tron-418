@@ -79,7 +79,7 @@ func TestBaristaSystemPromptAlwaysHasBaseRules(t *testing.T) {
 
 func TestEvaluateBeansDecafTriggersDeclination(t *testing.T) {
 	// geminiKey is empty in tests — decaf is caught before the API call anyway.
-	verdict, err := evaluateBeans(context.Background(), "I want a nice decaf please", 0)
+	verdict, err := evaluateBeans(context.Background(), "I want a nice decaf please", 0, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -96,13 +96,9 @@ func TestEvaluateBeansDecafTriggersDeclination(t *testing.T) {
 
 func TestEvaluateBeansOfflineRotatesRejections(t *testing.T) {
 	// With no gemini key, evaluateBeans cycles through offlineRejections.
-	oldKey := geminiKey
-	geminiKey = ""
-	defer func() { geminiKey = oldKey }()
-
 	seen := map[string]bool{}
 	for i := range offlineRejections {
-		v, err := evaluateBeans(context.Background(), "some normal beans", i)
+		v, err := evaluateBeans(context.Background(), "some normal beans", i, "")
 		if err != nil {
 			t.Fatalf("rejection %d: unexpected error: %v", i, err)
 		}
@@ -117,12 +113,8 @@ func TestEvaluateBeansOfflineRotatesRejections(t *testing.T) {
 }
 
 func TestEvaluateBeansOfflineApprovedFlag(t *testing.T) {
-	oldKey := geminiKey
-	geminiKey = ""
-	defer func() { geminiKey = oldKey }()
-
 	for i, msg := range offlineRejections {
-		v, _ := evaluateBeans(context.Background(), "beans", i)
+		v, _ := evaluateBeans(context.Background(), "beans", i, "")
 		wantApproved := strings.HasPrefix(msg, "APPROVED:")
 		if v.Approved != wantApproved {
 			t.Errorf("offline rejection %d: Approved = %v, want %v", i, v.Approved, wantApproved)
