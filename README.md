@@ -139,4 +139,4 @@ The HTCPCP/1.0 specification describes a `WHEN` method, add-in headers (for milk
 
 ## License
 
-MIT. The teapot is not included.
+[The Unlicense](LICENSE) — public domain. The teapot is not included.

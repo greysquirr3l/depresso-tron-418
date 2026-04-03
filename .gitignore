@@ -9,6 +9,9 @@
 # Build output
 depresso-tron-418
 
+# Generated images
+cover-image.png
+
 # macOS
 .DS_Store
 
