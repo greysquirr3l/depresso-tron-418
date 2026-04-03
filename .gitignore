@@ -1,0 +1,18 @@
+# Environment — contains real secrets, never commit
+.env
+
+# SQLite database
+*.db
+*.db-shm
+*.db-wal
+
+# Build output
+depresso-tron-418
+
+# macOS
+.DS_Store
+
+Rando-Sans.zip
+rando-sans-license.pdf
+details.txt
+.golangci.yml

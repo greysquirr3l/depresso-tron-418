@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DEPRESSO-TRON 418 ∷ HTCPCP/1.0</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- Inline SVG teapot favicon — silences the 404 and stays on-brand -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫖</text></svg>">
+  <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js" crossorigin="anonymous"></script>
+  <!-- htmx:beforeSwap fires AFTER responseHandling has set shouldSwap,
+       so this override sticks. htmx:beforeOnLoad fires too early. -->
+  <script>
+    document.addEventListener("htmx:beforeSwap", function(evt) {
+      if (evt.detail.xhr.status === 418) {
+        evt.detail.shouldSwap = true;
+        evt.detail.isError   = false;
+      }
+    });
+  </script>
+</head>
+<body id="body">
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <div class="uncentered-div" id="main-container">
+
+    <!-- ── HEADER ─────────────────────────────────────────────────── -->
+    <header class="terminal-header">
+      <!-- ── AMBIENT VIDEO (CRT inset) ─────────────────────────────── -->
+      <div class="crt-inset" id="crt-inset" aria-hidden="true">
+        <div class="crt-bezel">
+          <video id="ambient-video"
+                 src="/assets/video/90s_coffee.mp4"
+                 autoplay muted loop playsinline
+                 preload="auto"></video>
+          <div class="crt-static"></div>
+          <div class="crt-label">● BREW CAM — HOLT, MI</div>
+        </div>
+      </div>
+      <pre class="logo" aria-label="Depresso-Tron 418">
+ ██████╗ ███████╗██████╗ ██████╗ ███████╗███████╗███████╗ ██████╗
+ ██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝██╔════╝██╔════╝██╔═══██╗
+ ██║  ██║█████╗  ██████╔╝██████╔╝█████╗  ███████╗███████╗██║   ██║
+ ██║  ██║██╔══╝  ██╔═══╝ ██╔══██╗██╔══╝  ╚════██║╚════██║██║   ██║
+ ██████╔╝███████╗██║     ██║  ██║███████╗███████║███████║╚██████╔╝
+ ╚═════╝ ╚══════╝╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝ ╚═════╝
+          T R O N  ·  4 1 8  ·  H T C P C P / 1 . 0  ·  R F C  2 3 2 4
+      </pre>
+      <p class="subtitle">Hyper Text Coffee Pot Control Protocol · RFC 2324 · Completely Compliant</p>
+
+      <div class="status-bar">
+        <span id="server-mood"
+              class="mood-badge {{.MoodClass}}"
+              hx-get="/teapot-state"
+              hx-trigger="every 5s"
+              hx-swap="outerHTML">{{.Mood}}</span>
+        <span class="status-note">
+          Port 4180&nbsp;·&nbsp;coffee:// only&nbsp;·&nbsp;
+          <span id="barista-indicator"
+                hx-get="/gemini-status"
+                hx-trigger="every 30s"
+                hx-swap="outerHTML">
+            {{if .GeminiConfigured}}<span class="badge-ok">✓ BARISTA ONLINE</span>
+            {{else}}<span class="badge-pending">⚠ OFFLINE SNARK MODE</span>{{end}}
+          </span>
+        </span>
+        <button class="manager-btn"
+                hx-post="/manager"
+                hx-swap="none"
+                title="Invoke §4.2.3 of the HTCPCP Consumer Rights Addendum">
+          🗣 SPEAK TO THE MANAGER
+        </button>
+      </div>
+    </header>
+
+    <!-- ── STATION −1: BARISTA CREDENTIALS (shown when Gemini key absent) ── -->
+    {{if not .GeminiConfigured}}
+    <section class="station station-gemini" id="station-gemini">
+      <h2 class="station-header">[ STATION −1 ] ∷ BARISTA CREDENTIALS</h2>
+      <div class="station-body">
+        <p class="warning">⚠ The Sentient HTCPCP Barista is currently running in <strong>Offline Snark Mode</strong>.</p>
+        <p>This means rejections are generated from a pre-loaded bank of 6 insults, rather than the 
+        dynamically-escalating Gemini-powered contempt you deserve. To unlock full barista hostility,
+        provide a <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Gemini API key</a>.</p>
+        <p class="fine-print">The key is stored server-side in SQLite. It is never echoed back to the browser.
+        Transmission is only as secure as your localhost. You have been warned.</p>
+        <form id="gemini-key-form"
+              hx-post="/set-gemini-key"
+              hx-target="#gemini-key-result"
+              hx-swap="innerHTML"
+              hx-indicator="#gemini-spinner">
+          <label for="gemini_key">Gemini API Key:</label>
+          <input type="password"
+                 id="gemini_key"
+                 name="gemini_key"
+                 placeholder="AIza..."
+                 autocomplete="off"
+                 spellcheck="false">
+          <div id="gemini-spinner" class="htmx-indicator">Authenticating with the Barista's employer...</div>
+          <div class="btn-row">
+            <button type="submit" class="btn-primary flee-btn">EMPLOY THE BARISTA</button>
+            <button type="button"
+                    class="btn-secondary"
+                    onclick="document.getElementById('station-gemini').classList.add('station-dismissed')">
+              Skip (Offline Snark Mode)
+            </button>
+          </div>
+        </form>
+        <div id="gemini-key-result"></div>
+      </div>
+    </section>
+    {{end}}
+
+    <!-- ── PERMIT GATE (shown until permit approved) ───────────────── -->
+    {{if not .PermitApproved}}
+    <section class="station" id="station-0">
+      <h2 class="station-header">[ STATION 0 ] ∷ BREWING PERMIT REQUIRED</h2>
+      <div class="station-body">
+        <p class="warning">⚠ PER HTCPCP ADMINISTRATIVE CODE §418.1: All BREW attempts require a valid Brewing Permit issued by the Automated HTCPCP Permit Review Committee (AHPRC).</p>
+        <p>Committee composition: <strong>0 humans</strong>. Average review time: <strong>10 seconds</strong>. Appeal process: <strong>unavailable</strong>.</p>
+
+        <form id="permit-form"
+              hx-post="/apply-permit"
+              hx-target="#permit-result"
+              hx-swap="innerHTML"
+              hx-indicator="#permit-spinner">
+          <label for="haiku">
+            Describe your relationship with caffeine using <strong>iambic pentameter</strong> (5 lines, da-DUM da-DUM da-DUM da-DUM da-DUM):
+          </label>
+          <textarea id="haiku" name="haiku" rows="5"
+                    placeholder="da-DUM da-DUM da-DUM da-DUM da-DUM&#10;da-DUM da-DUM da-DUM da-DUM da-DUM&#10;..."></textarea>
+          <p class="fine-print">Note: The committee does not read the iambic pentameter. This field is required for psychological reasons.</p>
+          <div id="permit-spinner" class="htmx-indicator">Transmitting to AHPRC (0 members)...</div>
+          <button type="submit" class="btn-primary flee-btn">SUBMIT PERMIT APPLICATION</button>
+        </form>
+
+        <div id="permit-result"></div>
+      </div>
+    </section>
+
+    <!-- ── MAIN INTERFACE (shown after permit approved) ───────────── -->
+    {{else}}
+
+    <!-- Station 1: Bean Authentication -->
+    <section class="station {{if .BeansApproved}}station-complete{{end}}" id="station-1">
+      <h2 class="station-header">
+        [ STATION 1 ] ∷ BEAN AUTHENTICATION
+        {{if .BeansApproved}}<span class="badge-ok">✓ APPROVED</span>{{else}}<span class="badge-pending">PENDING</span>{{end}}
+      </h2>
+      <div class="station-body">
+        {{if .BeansApproved}}
+        <p class="success">Bean description accepted by the Sentient HTCPCP Barista. Proceed to Station 2.</p>
+        {{else}}
+        <p>The Sentient HTCPCP Barista will evaluate your beans. Be pretentious. Be geological.
+        Be prepared to be rejected, and then rejected again with increasing contempt.</p>
+        <p class="fine-print">Required vocabulary: ethically-sourced · altitude · notes of stone fruit · micro-lot ·
+        anaerobic fermentation · bloom · terroir · processing station · varietal. Use at least 3.</p>
+        <p class="fine-print">Forbidden vocabulary: Folgers · Starbucks · pre-ground · instant · K-cup · pod ·
+        <span class="redacted">[REDACTED]</span>.</p>
+
+        <form id="bean-form"
+              hx-post="/check-beans"
+              hx-target="#barista-feedback"
+              hx-swap="innerHTML"
+              hx-indicator="#barista-spinner">
+          <label for="beans">Describe your beans to the Barista:</label>
+          <textarea id="beans" name="beans" rows="5"
+                    placeholder="e.g., Single-origin micro-lot from a natural-process farm at 1,800m altitude, exhibiting notes of stone fruit and a bloom that speaks to the terroir..."
+                    oninput="detectDecaf(this.value)"></textarea>
+          <div id="barista-spinner" class="htmx-indicator">Consulting with the Barista...</div>
+          <button type="submit" class="btn-primary flee-btn">SUBMIT TO BARISTA</button>
+        </form>
+
+        <div id="barista-feedback"></div>
+        {{end}}
+      </div>
+    </section>
+
+    <!-- Station 2: CaffeineChain PoW -->
+    <section class="station {{if not .BeansApproved}}station-locked{{end}} {{if .PowSolved}}station-complete{{end}}" id="station-2">
+      <h2 class="station-header">
+        [ STATION 2 ] ∷ CAFFEINECHAIN™ PROOF-OF-WORK
+        {{if .PowSolved}}<span class="badge-ok">✓ VERIFIED</span>
+        {{else if not .BeansApproved}}<span class="badge-locked">🔒 LOCKED</span>
+        {{else}}<span class="badge-pending">PENDING</span>{{end}}
+      </h2>
+      <div class="station-body">
+        {{if .PowSolved}}
+        <p class="success">CaffeineChain proof-of-work verified. Your CPU's suffering has been acknowledged and immediately discarded.</p>
+        {{else if .BeansApproved}}
+        <p>Before proceeding, you must demonstrate commitment by solving a <strong>CaffeineChain™</strong> proof-of-work challenge.</p>
+        <p class="fine-print">Find an integer N such that <code>hex(sha256(seed + N))</code> begins with <code>cafe</code>.
+        Burns 5–30 seconds of CPU. This is intentional.
+        CaffeineChain™ implies no blockchain technology, financial instrument, or useful computation. All rights reserved. None granted.</p>
+        <div id="pow-station" hx-get="/pow-challenge" hx-trigger="revealed" hx-swap="innerHTML">
+          <p class="loading">Loading CaffeineChain challenge...</p>
+        </div>
+        {{else}}
+        <p class="locked-msg">🔒 Complete Station 1 to unlock.</p>
+        {{end}}
+      </div>
+    </section>
+
+    <!-- Station 3: Pour-Over Queue -->
+    <section class="station {{if not .PowSolved}}station-locked{{end}}" id="station-3">
+      <h2 class="station-header">
+        [ STATION 3 ] ∷ POUR-OVER QUEUE
+        {{if not .PowSolved}}<span class="badge-locked">🔒 LOCKED</span>
+        {{else}}<span class="badge-pending">ACTIVE</span>{{end}}
+      </h2>
+      <div class="station-body">
+        {{if .PowSolved}}
+        <p>You have been placed in the Pour-Over Queue.</p>
+        <div id="queue-display" hx-ext="sse" sse-connect="/queue">
+          <div id="queue-position"><p>Connecting to queue management system...</p></div>
+          <div sse-swap="queue-position" hx-target="#queue-position" hx-swap="beforeend"></div>
+        </div>
+        <p class="fine-print">Queue positions are non-refundable and non-transferable. Position #418 is the entry position.
+        The queue does not advance in any predictable manner. Management is not responsible for existential distress.</p>
+        {{else}}
+        <p class="locked-msg">🔒 Complete Station 2 to unlock.</p>
+        {{end}}
+      </div>
+    </section>
+
+    <!-- Station 4: BREW Control -->
+    <section class="station {{if not .PowSolved}}station-locked{{end}}" id="station-4">
+      <h2 class="station-header">
+        [ STATION 4 ] ∷ HTCPCP BREW CONTROL
+        {{if not .PowSolved}}<span class="badge-locked">🔒 LOCKED</span>
+        {{else}}<span class="badge-pending">READY</span>{{end}}
+      </h2>
+      <div class="station-body">
+        {{if .PowSolved}}
+        <p>You may now attempt to issue the <strong>BREW</strong> command (RFC 2324 §2.1.1).</p>
+        <p class="warning">⚠ Pre-flight checks are performed at dispatch time. The server mood indicator is not decorative.</p>
+        <p class="fine-print">Current server mood: <em>{{.Mood}}</em></p>
+        {{if .IsTeapotMode}}
+        <p class="error">🫖 Server is currently in TEAPOT MODE. BREW will return 418. You were warned.</p>
+        {{end}}
+
+        <div id="brew-controls">
+          <button class="btn-brew flee-btn"
+                  hx-post="/brew"
+                  hx-headers='{"X-HTTP-Method-Override":"BREW"}'
+                  hx-vals='{"sid":"{{.SessionID}}"}'
+                  hx-target="#brew-result"
+                  hx-swap="innerHTML"
+                  hx-confirm="Sending BREW command via RFC 2324 §2.1.1. Your browser security settings will likely strip this. Proceed anyway?">
+            ☕ INITIALIZE BREW
+          </button>
+          <p class="fine-print">
+            Uses <code>X-HTTP-Method-Override: BREW</code> because browsers refuse to speak HTCPCP natively.
+            This is their failure.
+          </p>
+        </div>
+
+        <div id="brew-result"></div>
+        {{else}}
+        <p class="locked-msg">🔒 Complete Station 2 to unlock.</p>
+        {{end}}
+      </div>
+    </section>
+
+    {{end}}<!-- end permit gate -->
+
+    <!-- ── FOOTER ─────────────────────────────────────────────────── -->
+    <footer class="terminal-footer">
+      <p>DEPRESSO-TRON 418 ∷ RFC 2324 COMPLIANT ∷ NOT FOR HUMAN CONSUMPTION</p>
+      <p class="fine-print">Built on a MacBook Pro M3 which, while technically adequate for running a Go server,<br>
+      lacks the thermal mass required for true flavour extraction. The barista has noted this.</p>
+      <p class="fine-print">
+        <strong>coffee://localhost:4180/brew</strong> · <em>http:// users: see Comic Sans above</em>
+      </p>
+    </footer>
+
+  </div><!-- end .uncentered-div -->
+
+  <!-- ── DECAF NUCLEAR PROTOCOL OVERLAY ────────────────────────────── -->
+  <div id="decaf-overlay" class="decaf-overlay hidden" role="alertdialog" aria-live="assertive" aria-atomic="true">
+    <div class="decaf-content">
+      <div class="decaf-symbol">☢️</div>
+      <h1>DECAF NUCLEAR PROTOCOL</h1>
+      <p>The word that shall not be named has been detected in your bean description.</p>
+      <p>UI locked. Grayscale enforced. Thermal ramp aborted.</p>
+      <p>Lockout expires in <span id="decaf-timer">300</span> seconds.</p>
+      <p class="fine-print">Per RFC 9999 §6.4.1 (DECAF_PROHIBITION): consumption of decaffeinated<br>
+      coffee via an HTCPCP interface is a Category 4 violation. This is your only warning.</p>
+    </div>
+  </div>
+
+  <!-- ── TEAPOT IDENTITY CRISIS OVERLAY ────────────────────────────── -->
+  <div id="crisis-overlay" class="crisis-overlay hidden" aria-live="polite">
+    <video id="crisis-video"
+           src="/assets/video/90s_coffee.mp4"
+           autoplay muted loop playsinline></video>
+    <div class="crisis-text">
+      <h1>IDENTITY CRISIS</h1>
+      <p>The server is questioning whether it is a coffee pot, a teapot, or a philosophical construct.</p>
+      <p>Please stand by.</p>
+    </div>
+  </div>
+
+  <script src="/static/brew.js"></script>
+  <script>
+    document.body.addEventListener("decafDetected", activateDecafProtocol);
+    document.body.addEventListener("identityCrisis", activateIdentityCrisis);
+  </script>
+</body>
+</html>

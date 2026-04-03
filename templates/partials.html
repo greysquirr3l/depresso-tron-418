@@ -1,0 +1,172 @@
+{{define "error.html"}}
+<div class="error-box">
+  <p class="error">{{.Message}}</p>
+</div>
+{{end}}
+
+{{define "method-not-allowed.html"}}
+<div class="error-box">
+  <h3>405 METHOD NOT ALLOWED</h3>
+  <p class="error">{{.Message}}</p>
+  <p class="fine-print">This server speaks HTCPCP. The BREW and WHEN methods are documented in RFC 2324.
+  GET is not a coffee verb. Please re-read the RFC before attempting to consume its endpoints.</p>
+</div>
+{{end}}
+
+{{define "decaf.html"}}
+<div class="error-box decaf-warning">
+  <h3>☢️ DECAF NUCLEAR PROTOCOL ACTIVATED</h3>
+  <p class="error">{{.Message}}</p>
+</div>
+{{end}}
+
+{{define "teapot.html"}}
+<div class="teapot-full" id="teapot-identity-response">
+  <pre class="teapot-art teapot-mode">
+       ) )
+      ( (
+    ........
+    | 4 1 8 |]
+     \  👁  /
+      '---'
+
+  418 I AM A TEAPOT
+  RFC 2324 §2.3.2
+  </pre>
+  <h3>418 I'm a Teapot</h3>
+  <p>The server has fully assumed its teapot identity and categorically refuses to brew coffee.</p>
+  <p>It is short. It is stout. This is its handle. That is its spout.</p>
+  <p class="fine-print">Per RFC 2324 §2.3: "Any attempt to brew coffee with a teapot should result in the error code '418 I'm a teapot'."
+  This is not a simulation. The server is a teapot.</p>
+  <img src="/assets/img/teapot.png"
+       alt="Utah Teapot — the canonical teapot" width="180"
+       title="Photo: Marshall Astor"
+       style="opacity:0.7;margin:1rem auto;display:block;">
+  <p class="fine-print">The Utah Teapot (Newell Teapot, 1975). A sacred object. Do not brew in it.</p>
+</div>
+{{end}}
+
+{{define "overflow.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CUP OVERFLOW — HTCPCP ERROR</title>
+  <style>
+    body { background: #1a0a00; color: #c8851a; font-family: monospace; overflow: hidden; margin: 0; padding: 2rem; }
+    h1 { color: #ff4500; font-size: 3rem; }
+    .flood { font-size: 0.5rem; line-height: 1.1; word-break: break-all; opacity: 0.6; }
+  </style>
+</head>
+<body>
+  <h1>CUP OVERFLOW</h1>
+  <p>You did not click WHEN at second :{windSec} of the minute.</p>
+  <p>The digital milk pour continues unabated.</p>
+  <p>Your browser window is now full of coffee.</p>
+  <p style="font-size:0.8rem;opacity:0.5">Clear your cookies to escape. Or wait. It doesn't matter.</p>
+  <div class="flood" id="flood"></div>
+  <script>
+    const NBSP = '\u00A0';
+    const f = document.getElementById('flood');
+    let i = 0;
+    const fill = setInterval(() => {
+      f.textContent += NBSP.repeat(200) + '☕'.repeat(10);
+      i++;
+      if (i > 80) clearInterval(fill);
+    }, 80);
+  </script>
+</body>
+</html>
+{{end}}
+
+{{define "beans-approved.html"}}
+<div class="success-box">
+  <h3>✓ BEANS APPROVED</h3>
+  <p class="success">The Barista is grudgingly impressed. Your beans have been authenticated.</p>
+  <p>You may proceed to Station 2 for CaffeineChain™ verification.</p>
+  <p class="fine-print">The Barista's exact words were withheld for legal reasons. They were not kind, but they concluded with "APPROVED:".</p>
+  <button hx-get="/" hx-target="body" hx-swap="innerHTML" class="btn-primary">PROCEED TO STATION 2 →</button>
+</div>
+{{end}}
+
+{{define "beans-rejected.html"}}
+<div class="error-box rejection-box">
+  <h3>REJECTED — {{.RejectionCount}}× TOTAL</h3>
+  <p class="rejection-msg">{{.Message}}</p>
+  {{if ge .RejectionCount 5}}
+  <p class="fine-print">Rejection #{{.RejectionCount}}. The Barista has escalated to iambic pentameter. This is your fault.</p>
+  {{else if ge .RejectionCount 3}}
+  <p class="fine-print">The Barista's patience has formally expired. Contempt levels: THEATRICAL.</p>
+  {{else}}
+  <p class="fine-print">Tip: you need three of: ethically-sourced · altitude · notes of stone fruit · micro-lot · anaerobic fermentation · bloom. Start there. Or don't.</p>
+  {{end}}
+</div>
+{{end}}
+
+{{define "pow-station.html"}}
+<div class="pow-box" id="pow-box">
+  <h3>CaffeineChain™ Challenge Issued</h3>
+  <p>Find integer N such that <code>sha256("{{.PowSeed}}" + N)</code> starts with <code>cafe</code></p>
+  <p class="fine-print">Seed: <code>{{.PowSeed}}</code></p>
+  <div id="pow-status" class="loading">
+    Mining… <span id="pow-nonce-display">nonce: 0</span>
+  </div>
+  <div id="pow-manual">
+    <p class="fine-print">Or enter manually if you distrust JavaScript:</p>
+    <form hx-post="/pow-verify" hx-target="#pow-station" hx-swap="innerHTML">
+      <input type="hidden" name="sid" value="{{.SessionID}}">
+      <input type="number" name="nonce" placeholder="Nonce" min="0" max="10000000">
+      <button type="submit" class="btn-secondary">SUBMIT NONCE</button>
+    </form>
+  </div>
+  <script>
+    (function() {
+      const seed = "{{.PowSeed}}";
+      const sid  = "{{.SessionID}}";
+      let nonce  = 0;
+      const status  = document.getElementById("pow-status");
+      const display = document.getElementById("pow-nonce-display");
+
+      async function sha256hex(str) {
+        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+      }
+
+      async function mine() {
+        while (nonce <= 10_000_000) {
+          const hash = await sha256hex(seed + nonce);
+          if (nonce % 500 === 0 && display) display.textContent = "nonce: " + nonce;
+          if (hash.startsWith("cafe")) {
+            if (status) status.textContent = "✓ Solution found: nonce=" + nonce + " → " + hash.slice(0,12) + "…";
+            const form = document.createElement("form");
+            form.method = "POST"; form.action = "/pow-verify";
+            ["sid","nonce"].forEach((k,i) => {
+              const inp = document.createElement("input");
+              inp.type = "hidden"; inp.name = k; inp.value = [sid, nonce][i];
+              form.appendChild(inp);
+            });
+            document.body.appendChild(form);
+            htmx.ajax("POST", "/pow-verify",
+              { source: form, target: "#pow-station", swap: "innerHTML",
+                values: { sid: sid, nonce: String(nonce) } });
+            return;
+          }
+          nonce++;
+          if (nonce % 200 === 0) await new Promise(r => setTimeout(r, 0));
+        }
+        if (status) status.textContent = "Mining failed after 10M attempts. The challenge has expired. Reload.";
+      }
+      mine();
+    })();
+  </script>
+</div>
+{{end}}
+
+{{define "pow-success.html"}}
+<div class="success-box">
+  <h3>✓ CAFFEINECHAIN™ VERIFIED</h3>
+  <p class="success">Proof-of-work accepted. Your CPU has suffered meaningfully.</p>
+  <p>The blockchain has been updated. (There is no blockchain. There was never a blockchain.)</p>
+  <button hx-get="/" hx-target="body" hx-swap="innerHTML" class="btn-primary">PROCEED TO STATION 3 →</button>
+</div>
+{{end}}
